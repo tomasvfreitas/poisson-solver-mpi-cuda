@@ -1,0 +1,12 @@
+# CodeLite files
+.codelite/
+*.workspace
+
+# build outputs
+*.o
+*.out
+*.exe
+
+# program outputs
+solution.txt
+repository.log
