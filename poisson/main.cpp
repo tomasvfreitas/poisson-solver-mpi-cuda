@@ -2,159 +2,231 @@
  * @file main.cpp
  * @brief Serial Jacobi solver for the 3D Poisson equation.
  *
- * This program solves the Poisson equation
+ * This program solves the Poisson equation \f$ \nabla^2 u = f \f$ on 
+ * a three-dimensional grid using Jacobi iteration with Dirichlet boundary conditions.
  *
- *      \f$ \nabla^2 u = f \f$
+ * The solution is iteratively updated using a finite-difference discretisation 
+ * of the Laplacian operator until the L2 norm of the residual \f$ \|r\|_2 \f$
+ * falls below a specified tolerance.
  *
- * on a 3-dimensional grid using Jacobi iteration with Dirichlet boundary
- * conditions. The solver iterates until the L2 norm of the residual falls
- * below a specified tolerance.
+ * The implementation uses the BLAS routine 'dcopy' to update the
+ * solution array after each Jacobi iteration.
  *
- * The solver computes the numerical solution and monitors convergence
- * using the residual norm.
+ * @author Tomas Freitas
+ * @date 2026
  */
+
 
 #include <iostream>
 #include <cmath>
 
 #define F77NAME(x) x##_
-extern "C"{
+extern "C" {
     void F77NAME(dcopy)(const int& N,
                         const double* x, const int& incx,
-                        double* y, const int& incy); 
-                         
-    //void F77NAME(daxpy)(const int& N, const double& alpha, const double* x, const int& incx, double* y, const int& incy);
-                           
-    //double F77NAME(dasum)(const int& N, const double* x, const int& incx);
+                        double* y, const int& incy);
 }
 
 
 /**
- * @brief Entry point for the serial Poisson solver.
+ * @brief Initialise the verification problem on the 3D grid.
  *
- * The program:
- * 1. Initialises the computational grid.
- * 2. Applies Dirichlet boundary conditions.
- * 3. Performs Jacobi iterations.
- * 4. Computes the residual norm after each iteration.
- * 5. Stops when the residual falls below the specified tolerance.
+ * Applies Dirichlet boundary conditions using the exact solution
+ * \f$ u(x,y,z) = x^2 + y^2 + z^2 \f$, sets the forcing term to \f$ f = 6 \f$,
+ * and initialises interior values to zero.
  *
- * @return int Program exit status.
+ * @param u Numerical solution array.
+ * @param u_new Temporary solution array used for Jacobi updates.
+ * @param f Forcing function array.
+ * @param Nx Number of grid points in x-direction.
+ * @param Ny Number of grid points in y-direction.
+ * @param Nz Number of grid points in z-direction.
+ * @param hx Grid spacing in x-direction.
+ * @param hy Grid spacing in y-direction.
+ * @param hz Grid spacing in z-direction.
  */
+void initialise_problem(double* u, double* u_new, double* f,
+                        int Nx, int Ny, int Nz, double hx,
+                        double hy, double hz) {
  
- int main() {
-    
-    /// Number of grid points in x-direction
-    int Nx = 4;
-    
-    /// Number of grid points in y-direction
-    int Ny = 4;
-    
-    /// Number of grid points in z-direction
-    int Nz = 4;
-    
-    
-    /// Numerical solution
-    double *u     = new double[Nx * Ny * Nz]();
-    
-    /// Temporary array to update solution
-    double *u_new = new double[Nx * Ny * Nz]();
-    
-    /// Forcing function
-    double *f     = new double[Nx * Ny * Nz]();
-    
-    
-    /// Grid spacing in x-direction
-    double hx = 1.0 / (Nx - 1.0);
-    
-    /// Grid spacing in y-direction
-    double hy = 1.0 / (Ny - 1.0);
-    
-    /// Grid spacing in z-direction
-    double hz = 1.0 / (Nz - 1.0);
-    
-    
-    /// Finite-difference coefficient in x-direction
-    double a = 1.0 / (hx * hx);
-
-    /// Finite-difference coefficient in y-direction
-    double b = 1.0 / (hy * hy);
-
-    /// Finite-difference coefficient in z-direction
-    double c = 1.0 / (hz * hz);
-    
-    
-    /// Enforcing Dirichlet boundary conditions and initialising interior values
     for (int k = 0; k < Nz; ++k) {
         for (int j = 0; j < Ny; ++j) {
             for (int i = 0; i < Nx; ++i) {
-                
+
                 int idx = i + Nx * (j + Ny * k);
-                
+
                 double x = i * hx;
                 double y = j * hy;
                 double z = k * hz;
-                
-                if (i == 0 || i == Nx - 1 || j == 0 || j == Ny - 1 || k == 0 || k == Nz - 1) {
-                    u[idx] = x*x + y*y + z*z;
-                }
-                else {
+
+                if (i == 0 || i == Nx - 1 ||
+                    j == 0 || j == Ny - 1 ||
+                    k == 0 || k == Nz - 1) {
+                    u[idx] = x * x + y * y + z * z;
+                } else {
                     u[idx] = 0.0;
                 }
-                
+
                 f[idx]     = 6.0;
                 u_new[idx] = u[idx];
             }
         }
     }
+}
 
-    
-    double epsilon       = 1e-8;
-    double denom         = 1 / (2 * (a + b + c));
-    double residual_nrm2 = 1.0;
-    while (residual_nrm2 > epsilon) {
-        
-        /// Performing the Jacobi iteration on the interior grid points
-        for (int k = 1; k < Nz - 1; ++k) {
-            for (int j = 1; j < Ny - 1; ++j) {
-                for (int i = 1; i < Nx - 1; ++i) {
-                    int idx = i + Nx * (j + Ny * k);
-                    u_new[idx] = denom * ((u[idx + 1] + u[idx - 1]) * a +
-                                 (u[idx + Nx] + u[idx - Nx]) * b +
-                                 (u[idx + Nx*Ny] + u[idx - Nx*Ny]) * c - f[idx]);
-                }
+
+/**
+ * @brief Perform one Jacobi sweep over the interior grid points.
+ *
+ * Updates the interior values of the solution using
+ * finite-differences for the 3D Poisson equation.
+ * Boundary values are not modified.
+ *
+ * @param u Current solution array.
+ * @param u_new Updated solution array.
+ * @param f Forcing function array.
+ * @param Nx Number of grid points in x-direction.
+ * @param Ny Number of grid points in y-direction.
+ * @param Nz Number of grid points in z-direction.
+ * @param a Finite-difference coefficient in x-direction.
+ * @param b Finite-difference coefficient in y-direction.
+ * @param c Finite-difference coefficient in z-direction.
+ * @param denom Precomputed denominator used in the Jacobi update.
+ */
+void jacobi(double* u, double* u_new, const double* f,
+            int Nx, int Ny, int Nz,
+            double a, double b, double c, double denom) {
+                
+    for (int k = 1; k < Nz - 1; ++k) {
+        for (int j = 1; j < Ny - 1; ++j) {
+            for (int i = 1; i < Nx - 1; ++i) {
+
+                int idx = i + Nx * (j + Ny * k);
+
+                u_new[idx] = denom * (
+                    (u[idx + 1]       + u[idx - 1])       * a +
+                    (u[idx + Nx]      + u[idx - Nx])      * b +
+                    (u[idx + Nx * Ny] + u[idx - Nx * Ny]) * c -
+                    f[idx]);
             }
         }
+    }
+}
+
+
+/**
+ * @brief Compute the L2 norm of the residual.
+ *
+ * Evaluates the discrete residual
+ * \f$ r = f - \nabla_h^2 u \f$
+ * over the interior grid points and returns its Euclidean norm.
+ *
+ * @param u Current solution array.
+ * @param f Forcing function array.
+ * @param Nx Number of grid points in x-direction.
+ * @param Ny Number of grid points in y-direction.
+ * @param Nz Number of grid points in z-direction.
+ * @param a Finite-difference coefficient in x-direction.
+ * @param b Finite-difference coefficient in y-direction.
+ * @param c Finite-difference coefficient in z-direction.
+ * @return double L2 norm of the residual.
+ */
+double residual(const double* u, const double* f,
+                int Nx, int Ny, int Nz,
+                double a, double b, double c) {
+                    
+    double sum = 0.0;
+
+    for (int k = 1; k < Nz - 1; ++k) {
+        for (int j = 1; j < Ny - 1; ++j) {
+            for (int i = 1; i < Nx - 1; ++i) {
+
+                int idx = i + Nx * (j + Ny * k);
+
+                double lap =
+                    (u[idx + 1]       - 2.0 * u[idx] + u[idx - 1])       * a +
+                    (u[idx + Nx]      - 2.0 * u[idx] + u[idx - Nx])      * b +
+                    (u[idx + Nx * Ny] - 2.0 * u[idx] + u[idx - Nx * Ny]) * c;
+
+                double r = f[idx] - lap;
+                sum += r * r;
+            }
+        }
+    }
+
+    return std::sqrt(sum);
+}
+
+
+/**
+ * @brief Main driver for the serial Jacobi Poisson solver.
+ *
+ * Sets up the computational grid, initialises the verification problem,
+ * performs Jacobi iterations until convergence, and prints the final
+ * residual value.
+ *
+ * @return int Exit status.
+ */
+int main() {
+    
+    int Nx = 4;                         ///< Number of grid points in x-direction
+    int Ny = 4;                         ///< Number of grid points in y-direction
+    int Nz = 4;                         ///< Number of grid points in z-direction
+    
+    int N  = Nx * Ny * Nz;              ///< Nx by Ny by Nz dimensions for simplicity
+
+    double* u     = new double[N]();    ///< Numerical solution
+    double* u_new = new double[N]();    ///< Temporary array to update solution
+    double* f     = new double[N]();    ///< Forcing function
+
+    double hx = 1.0 / (Nx - 1.0);       ///< Grid spacing in x-direction
+    double hy = 1.0 / (Ny - 1.0);       ///< Grid spacing in y-direction
+    double hz = 1.0 / (Nz - 1.0);       ///< Grid spacing in z-direction
+
+    double a = 1.0 / (hx * hx);         ///< Finite-difference coefficient in x-direction
+    double b = 1.0 / (hy * hy);         ///< Finite-difference coefficient in y-direction
+    double c = 1.0 / (hz * hz);         ///< Finite-difference coefficient in z-direction
+
+    /// Enforcing Dirichlet boundary conditions and initialising interior values
+    initialise_problem(u, u_new, f, Nx, Ny, Nz, hx, hy, hz);
+    
+    double epsilon       = 1e-8;        ///< Tolerance
+    double denom         = 1.0 / (2.0 * (a + b + c));   ///< Setting denom for simplicity
+    double residual_nrm2 = 1.0;         ///< Initialising residual value
+    int iter             = 0;           ///< Initialising iteration counter
+    int max_iter         = 100000;      ///< Setting maximum number of iterations
+    
+    
+    /// Stop if residual is smaller than tolerance or if maximum number of iterations is reached
+    while (residual_nrm2 > epsilon && iter < max_iter) {
+        
+        /// Performing Jacobi iteration on the interior grid points
+        jacobi(u, u_new, f, Nx, Ny, Nz, a, b, c, denom);
         
         /// Updating the numerical solution
-        F77NAME(dcopy)(Nx*Ny*Nz, u_new, 1, u, 1);
-        
+        F77NAME(dcopy)(N, u_new, 1, u, 1);
+    
         /// Residual calculation
-        double sum      = 0.0;
-        double residual = 0.0;
-        for (int k = 1; k < Nz - 1; ++k) {
-            for (int j = 1; j < Ny - 1; ++j) {
-                for (int i = 1; i < Nx - 1; ++i) {
-                    int idx = i + Nx * (j + Ny * k);
-                    double lap = (u[idx + 1] - 2 * u[idx] + u[idx - 1]) * a +
-                                 (u[idx + Nx] - 2 * u[idx] + u[idx - Nx]) * b +
-                                 (u[idx + Nx*Ny] - 2 * u[idx] + u[idx - Nx*Ny]) * c;
-                    residual = f[idx] - lap;
-                    sum += residual * residual;
-                    
-                }
-            }
-        }
-        residual_nrm2 = sqrt(sum);
+        residual_nrm2 = residual(u, f, Nx, Ny, Nz, a, b, c);
+        
+        /// Iteration counter and residual printing
+        std::cout << "iter " << iter << " residual = " << residual_nrm2 << std::endl;
+        ++iter;
     }
     
-    /// Printing out final residual to terminal
+    /// Debugging checks 
+    int idx111 = 1 + Nx * (1 + Ny * 1);
+    int idx222 = 2 + Nx * (2 + Ny * 2);
+    std::cout << "u(1,1,1) = " << u[idx111] << std::endl;
+    std::cout << "u(2,2,2) = " << u[idx222] << std::endl;
+    
+    /// Printing final residual
     std::cout << "Final residual = " << residual_nrm2 << std::endl;
 
     /// Free dynamic memory
     delete[] u;
     delete[] u_new;
     delete[] f;
-    
-	return 0;
+
+    return 0;
 }
