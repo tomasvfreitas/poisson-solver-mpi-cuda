@@ -60,7 +60,9 @@ int main() {
     double epsilon       = 1e-8;
     double denom         = 1 / (2 * (a + b + c));
     double residual_nrm2 = 1.0;
-    while (residual_nrm2 > epsilon) {
+    int iter = 0;
+    int max_iter = 10000;
+    while (residual_nrm2 > epsilon && iter < max_iter) {
         
         // Jacobi iteration
         for (int k = 1; k < Nz - 1; ++k) {
@@ -94,18 +96,16 @@ int main() {
             }
         }
         residual_nrm2 = sqrt(sum);
+        std::cout << "iter " << iter << " residual = " << residual_nrm2 << std::endl;
+        ++iter;
     }
 
 
 
     int idx111 = 1 + Nx * (1 + Ny * 1);
     int idx222 = 2 + Nx * (2 + Ny * 2);
-
-    std::cout << "u(1,1,1) old = " << u[idx111] << std::endl;
-    std::cout << "u(1,1,1) new = " << u_new[idx111] << std::endl;
- 
-    std::cout << "u(2,2,2) old = " << u[idx222] << std::endl;
-    std::cout << "u(2,2,2) new = " << u_new[idx222] << std::endl;
+    std::cout << "u(1,1,1) = " << u[idx111] << std::endl;
+    std::cout << "u(2,2,2) = " << u[idx222] << std::endl;
 
 
     //for (int idx = 0; idx < Nx * Ny * Nz; ++idx) {
