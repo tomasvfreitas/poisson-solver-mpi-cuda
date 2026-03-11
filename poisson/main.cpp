@@ -1,4 +1,18 @@
 /**
+ * @mainpage Poisson Solver Documentation
+ *
+ * This project implements a serial Jacobi solver for the
+ * three-dimensional Poisson equation.
+ *
+ * The solver uses a finite-difference discretisation and
+ * iterates until the L2 norm of the residual falls below
+ * a specified tolerance.
+ *
+ * See the file documentation for implementation details.
+ */
+
+
+/**
  * @file main.cpp
  * @brief Serial Jacobi solver for the 3D Poisson equation.
  *
