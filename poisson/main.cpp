@@ -200,25 +200,14 @@ int main() {
     /// Stop if residual is smaller than tolerance or if maximum number of iterations is reached
     while (residual_nrm2 > epsilon && iter < max_iter) {
         
-        /// Performing Jacobi iteration on the interior grid points
         jacobi(u, u_new, f, Nx, Ny, Nz, a, b, c, denom);
         
-        /// Updating the numerical solution
         F77NAME(dcopy)(N, u_new, 1, u, 1);
     
-        /// Residual calculation
         residual_nrm2 = residual(u, f, Nx, Ny, Nz, a, b, c);
         
-        /// Iteration counter and residual printing
-        std::cout << "iter " << iter << " residual = " << residual_nrm2 << std::endl;
         ++iter;
     }
-    
-    /// Debugging checks 
-    int idx111 = 1 + Nx * (1 + Ny * 1);
-    int idx222 = 2 + Nx * (2 + Ny * 2);
-    std::cout << "u(1,1,1) = " << u[idx111] << std::endl;
-    std::cout << "u(2,2,2) = " << u[idx222] << std::endl;
     
     /// Printing final residual
     std::cout << "Final residual = " << residual_nrm2 << std::endl;
