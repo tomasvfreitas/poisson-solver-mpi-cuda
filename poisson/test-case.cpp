@@ -1,5 +1,7 @@
 #include "test-case.hpp"
 
+#include <cmath>
+
 /**
  * @brief Initialise the verification problem on the 3D grid.
  *
@@ -64,12 +66,15 @@ void test_case2(double* u, double* u_new, double* f,
                 if (i == 0 || i == Nx - 1 ||
                     j == 0 || j == Ny - 1 ||
                     k == 0 || k == Nz - 1) {
-                    u[idx] = sin(M_PI*x) * sin(M_PI*y) * sin(M_PI*z);
+                    u[idx] = std::sin(M_PI * x) * std::sin(M_PI * y) 
+                                                * std::sin(M_PI * z);
                 } else {
                     u[idx] = 0.0;
                 }
 
-                f[idx]     = -3 * M_PI * M_PI * sin(M_PI*x) * sin(M_PI*y) * sin(M_PI*z);
+                f[idx]     = -3.0 * M_PI * M_PI * std::sin(M_PI * x) 
+                                                * std::sin(M_PI * y) 
+                                                * std::sin(M_PI * z);
                 u_new[idx] = u[idx];
             }
         }
@@ -94,12 +99,15 @@ void test_case3(double* u, double* u_new, double* f,
                 if (i == 0 || i == Nx - 1 ||
                     j == 0 || j == Ny - 1 ||
                     k == 0 || k == Nz - 1) {
-                    u[idx] = sin(M_PI*x) * sin(4*M_PI*y) * sin(8*M_PI*z);
+                    u[idx] = std::sin(M_PI*x) * std::sin(4.0 * M_PI * y) 
+                                              * std::sin(8.0 * M_PI * z);
                 } else {
                     u[idx] = 0.0;
                 }
 
-                f[idx]     = -81 * M_PI * M_PI * sin(M_PI*x) * sin(4*M_PI*y) * sin(8*M_PI*z);
+                f[idx]     = -81.0 * M_PI * M_PI * std::sin(M_PI * x) 
+                                                 * std::sin(4.0 * M_PI * y) 
+                                                 * std::sin(8.0 * M_PI * z);
                 u_new[idx] = u[idx];
             }
         }
@@ -120,21 +128,17 @@ void test_case4(double* u, double* u_new, double* f,
                 double x = i * hx;
                 double y = j * hy;
                 double z = k * hz;
-
-                if (i == 0 || i == Nx - 1 ||
-                    j == 0 || j == Ny - 1 ||
-                    k == 0 || k == Nz - 1) {
-                    u[idx] = x * x + y * y + z * z;
-                } else {
-                    u[idx] = 0.0;
-                }
-
-                f[idx]     = 6.0;
+                
+                u[idx] = 0.0;
+                f[idx]     = 100.0 * std::exp(-100.0*((x - 0.5) * (x - 0.5) +
+                                                      (y - 0.5) * (y - 0.5) +
+                                                      (z - 0.5) * (z - 0.5)));
                 u_new[idx] = u[idx];
             }
         }
     }
 }
+
 
 void test_case5(double* u, double* u_new, double* f,
                         int Nx, int Ny, int Nz, double hx,
@@ -150,15 +154,8 @@ void test_case5(double* u, double* u_new, double* f,
                 double y = j * hy;
                 double z = k * hz;
 
-                if (i == 0 || i == Nx - 1 ||
-                    j == 0 || j == Ny - 1 ||
-                    k == 0 || k == Nz - 1) {
-                    u[idx] = x * x + y * y + z * z;
-                } else {
-                    u[idx] = 0.0;
-                }
-
-                f[idx]     = 6.0;
+                u[idx]     = 0.0;
+                f[idx]     = (x < 0.5) ? 1.0 : -1.0;
                 u_new[idx] = u[idx];
             }
         }
