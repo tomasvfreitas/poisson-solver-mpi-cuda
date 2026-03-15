@@ -1,6 +1,8 @@
 # CodeLite files
 .codelite/
 *.workspace
+*.project
+Debug/
 
 # build outputs
 *.o
@@ -10,3 +12,19 @@
 # program outputs
 solution.txt
 repository.log
+
+# doxygen output
+html/
+latex/
+
+# build directories
+Debug/
+
+#IDE files and other stuff
+poisson/poisson.project
+poisson/poisson.mk
+poisson/poisson
+poisson/poisson.txt
+html/
+latex/
+Debug/

@@ -13,7 +13,7 @@
 
 
 /**
- * @file main.cpp
+ * @file main-serial.cpp
  * @brief Serial Jacobi solver for the 3D Poisson equation.
  *
  * This program solves the Poisson equation \f$ \nabla^2 u = f \f$ on 
@@ -30,11 +30,13 @@
  * @date 2026
  */
 
-
 #include <iostream>
 #include <cmath>
 #include <string>
 #include <boost/program_options.hpp>
+
+#include "solver.hpp"
+#include "test-case.hpp"
 
 namespace po = boost::program_options;
 
@@ -44,137 +46,6 @@ extern "C" {
                         const double* x, const int& incx,
                         double* y, const int& incy);
 }
-
-
-/**
- * @brief Initialise the verification problem on the 3D grid.
- *
- * Applies Dirichlet boundary conditions using the exact solution
- * \f$ u(x,y,z) = x^2 + y^2 + z^2 \f$, sets the forcing term to \f$ f = 6 \f$,
- * and initialises interior values to zero.
- *
- * @param u Numerical solution array.
- * @param u_new Temporary solution array used for Jacobi updates.
- * @param f Forcing function array.
- * @param Nx Number of grid points in x-direction.
- * @param Ny Number of grid points in y-direction.
- * @param Nz Number of grid points in z-direction.
- * @param hx Grid spacing in x-direction.
- * @param hy Grid spacing in y-direction.
- * @param hz Grid spacing in z-direction.
- */
-void initialise_problem(double* u, double* u_new, double* f,
-                        int Nx, int Ny, int Nz, double hx,
-                        double hy, double hz) {
- 
-    for (int k = 0; k < Nz; ++k) {
-        for (int j = 0; j < Ny; ++j) {
-            for (int i = 0; i < Nx; ++i) {
-
-                int idx = i + Nx * (j + Ny * k);
-
-                double x = i * hx;
-                double y = j * hy;
-                double z = k * hz;
-
-                if (i == 0 || i == Nx - 1 ||
-                    j == 0 || j == Ny - 1 ||
-                    k == 0 || k == Nz - 1) {
-                    u[idx] = x * x + y * y + z * z;
-                } else {
-                    u[idx] = 0.0;
-                }
-
-                f[idx]     = 6.0;
-                u_new[idx] = u[idx];
-            }
-        }
-    }
-}
-
-
-/**
- * @brief Perform one Jacobi sweep over the interior grid points.
- *
- * Updates the interior values of the solution using
- * finite-differences for the 3D Poisson equation.
- * Boundary values are not modified.
- *
- * @param u Current solution array.
- * @param u_new Updated solution array.
- * @param f Forcing function array.
- * @param Nx Number of grid points in x-direction.
- * @param Ny Number of grid points in y-direction.
- * @param Nz Number of grid points in z-direction.
- * @param a Finite-difference coefficient in x-direction.
- * @param b Finite-difference coefficient in y-direction.
- * @param c Finite-difference coefficient in z-direction.
- * @param denom Precomputed denominator used in the Jacobi update.
- */
-void jacobi(double* u, double* u_new, const double* f,
-            int Nx, int Ny, int Nz,
-            double a, double b, double c, double denom) {
-                
-    for (int k = 1; k < Nz - 1; ++k) {
-        for (int j = 1; j < Ny - 1; ++j) {
-            for (int i = 1; i < Nx - 1; ++i) {
-
-                int idx = i + Nx * (j + Ny * k);
-
-                u_new[idx] = denom * (
-                    (u[idx + 1]       + u[idx - 1])       * a +
-                    (u[idx + Nx]      + u[idx - Nx])      * b +
-                    (u[idx + Nx * Ny] + u[idx - Nx * Ny]) * c -
-                    f[idx]);
-            }
-        }
-    }
-}
-
-
-/**
- * @brief Compute the L2 norm of the residual.
- *
- * Evaluates the discrete residual
- * \f$ r = f - \nabla_h^2 u \f$
- * over the interior grid points and returns its Euclidean norm.
- *
- * @param u Current solution array.
- * @param f Forcing function array.
- * @param Nx Number of grid points in x-direction.
- * @param Ny Number of grid points in y-direction.
- * @param Nz Number of grid points in z-direction.
- * @param a Finite-difference coefficient in x-direction.
- * @param b Finite-difference coefficient in y-direction.
- * @param c Finite-difference coefficient in z-direction.
- * @return double L2 norm of the residual.
- */
-double residual(const double* u, const double* f,
-                int Nx, int Ny, int Nz,
-                double a, double b, double c) {
-                    
-    double sum = 0.0;
-
-    for (int k = 1; k < Nz - 1; ++k) {
-        for (int j = 1; j < Ny - 1; ++j) {
-            for (int i = 1; i < Nx - 1; ++i) {
-
-                int idx = i + Nx * (j + Ny * k);
-
-                double lap =
-                    (u[idx + 1]       - 2.0 * u[idx] + u[idx - 1])       * a +
-                    (u[idx + Nx]      - 2.0 * u[idx] + u[idx - Nx])      * b +
-                    (u[idx + Nx * Ny] - 2.0 * u[idx] + u[idx - Nx * Ny]) * c;
-
-                double r = f[idx] - lap;
-                sum += r * r;
-            }
-        }
-    }
-
-    return std::sqrt(sum);
-}
-
 
 /**
  * @brief Main driver for the serial Jacobi Poisson solver.
@@ -207,19 +78,13 @@ int main(int argc, char* argv[]) {
         return 0;
     }
     
-    /// Check if user input a forcing file and assign value
+    /// Check if user input --test and/or --forcing file
     bool has_test    = vm.count("test") && !vm["test"].defaulted();
     bool has_forcing = vm.count("forcing");
     int  test_case   = vm["test"].as<int>();
     std::string forcing_file;
-    
-   // if (has_forcing) {
-   //     forcing_file = vm["forcing"].as<std::string>();
-   //     std::cerr << "Error: --forcing mode not implemented yet." << std::endl;
-   //     return 1;
-   // }
-    
-    /// Check if user provided both forcing function and selected a test case and give error
+
+    /// Check if neither or both were selected and give error
     if (has_test == has_forcing) {
         std::cerr << "Error: Exactly one of --test or --forcing must be provided." << std::endl;
         return 1;
@@ -237,7 +102,6 @@ int main(int argc, char* argv[]) {
     int Nx = vm["Nx"].as<int>();        ///< Number of grid points in x-direction
     int Ny = vm["Ny"].as<int>();        ///< Number of grid points in y-direction
     int Nz = vm["Nz"].as<int>();        ///< Number of grid points in z-direction
-    
     
     int N  = Nx * Ny * Nz;              ///< Nx by Ny by Nz dimensions for simplicity
 
@@ -261,6 +125,11 @@ int main(int argc, char* argv[]) {
             return 1;
         }
         initialise_problem(u, u_new, f, Nx, Ny, Nz, hx, hy, hz);
+    }
+    
+    /// Assigns forcing file
+    if (has_forcing) {
+        forcing_file = vm["forcing"].as<std::string>();
     }
     
     double epsilon       = vm["epsilon"].as<double>();  ///< Tolerance
