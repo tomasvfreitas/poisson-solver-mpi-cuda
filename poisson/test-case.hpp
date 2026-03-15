@@ -1,25 +1,42 @@
 #ifndef TEST_CASE_HPP
 #define TEST_CASE_HPP
 
+
 /**
- * @brief Initialise the verification problem on the 3D grid.
+ * @file test-case.hpp
+ * @brief Declarations for built-in Poisson solver test case initialisation.
  *
- * Applies Dirichlet boundary conditions using the exact solution
- * \f$ u(x,y,z) = x^2 + y^2 + z^2 \f$, sets the forcing term to \f$ f = 6 \f$,
- * and initialises interior values to zero.
+ * This header declares the routine used to initialise the numerical
+ * solution array, temporary solution array, and forcing array for the
+ * built-in 3D Poisson test cases.
+ */
+
+
+/**
+ * @brief Initialise one of the built-in Poisson test cases.
  *
+ * This routine sets the numerical solution array @p u, the temporary
+ * solution array @p u_new, and the forcing array @p f according to the
+ * selected built-in test case.
+ *
+ * Boundary values are applied on the outer faces of the 3D domain,
+ * interior values are initialised to zero, and @p u_new is initialised
+ * to match @p u.
+ *
+ * @param test_case Integer identifier of the test case to initialise.
  * @param u Numerical solution array.
  * @param u_new Temporary solution array used for Jacobi updates.
  * @param f Forcing function array.
- * @param Nx Number of grid points in x-direction.
- * @param Ny Number of grid points in y-direction.
- * @param Nz Number of grid points in z-direction.
- * @param hx Grid spacing in x-direction.
- * @param hy Grid spacing in y-direction.
- * @param hz Grid spacing in z-direction.
+ * @param Nx Number of grid points in the x-direction.
+ * @param Ny Number of grid points in the y-direction.
+ * @param Nz Number of grid points in the z-direction.
+ * @param hx Grid spacing in the x-direction.
+ * @param hy Grid spacing in the y-direction.
+ * @param hz Grid spacing in the z-direction.
  */
-void initialise_problem(double* u, double* u_new, double* f,
-                        int Nx, int Ny, int Nz, double hx,
-                        double hy, double hz);
+void initialise_test_case(int test_case,
+                          double* u, double* u_new, double* f,
+                          int Nx, int Ny, int Nz,
+                          double hx, double hy, double hz);
 
 #endif

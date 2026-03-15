@@ -98,6 +98,12 @@ int main(int argc, char* argv[]) {
         std::cerr << "Error: --Nx, --Ny and --Nz may only be specified with --test." << std::endl;
         return 1;
     }
+    
+    /// Checking for valid test number
+    if (has_test && (test_case < 1 || test_case > 5)) {
+        std::cerr << "Error: test case must be between 1 and 5." << std::endl;
+        return 1;
+    }
 
     int Nx = vm["Nx"].as<int>();        ///< Number of grid points in x-direction
     int Ny = vm["Ny"].as<int>();        ///< Number of grid points in y-direction
@@ -117,14 +123,10 @@ int main(int argc, char* argv[]) {
     double* u_new = new double[N]();    ///< Temporary array to update solution
     double* f     = new double[N]();    ///< Forcing function
     
-    /// Enforcing Dirichlet boundary conditions and initialising interior values
-    /// Temporary since only case 1 implemented yet
+    
+    /// Enforcing Dirichlet boundary conditions and initialising interior values for selected test case
     if (has_test) {
-        if (test_case != 1) {
-            std::cerr << "Error: only test case 1 implemented so far." << std::endl;
-            return 1;
-        }
-        initialise_problem(u, u_new, f, Nx, Ny, Nz, hx, hy, hz);
+        initialise_test_case(test_case, u, u_new, f, Nx, Ny, Nz, hx, hy, hz);
     }
     
     /// Assigns forcing file
