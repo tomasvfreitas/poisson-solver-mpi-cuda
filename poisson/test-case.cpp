@@ -36,7 +36,8 @@ namespace {
                 j == 0 || j == Ny - 1 ||
                 k == 0 || k == Nz - 1);
     }
-}
+    
+} // anonymous namespace
 
 
 /**
