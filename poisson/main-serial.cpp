@@ -37,6 +37,7 @@
 
 #include "solver.hpp"
 #include "test-case.hpp"
+#include "io.hpp"
 
 namespace po = boost::program_options;
 
@@ -105,33 +106,35 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    int Nx = vm["Nx"].as<int>();        ///< Number of grid points in x-direction
-    int Ny = vm["Ny"].as<int>();        ///< Number of grid points in y-direction
-    int Nz = vm["Nz"].as<int>();        ///< Number of grid points in z-direction
+    int Nx, Ny, Nz;                     ///< Initialising grid dimension
+    double* f     = nullptr;            ///< Initialising forcing function
     
-    int N  = Nx * Ny * Nz;              ///< Nx by Ny by Nz dimensions for simplicity
-
+    /// Checks if --test or --forcing and assings correct grid dimensions
+    if (has_forcing) {
+        forcing_file = vm["forcing"].as<std::string>();
+        read_forcing(forcing_file, f, Nx, Ny, Nz);
+    }
+    else {
+        Nx = vm["Nx"].as<int>();        ///< Number of grid points in x-direction
+        Ny = vm["Ny"].as<int>();        ///< Number of grid points in y-direction
+        Nz = vm["Nz"].as<int>();        ///< Number of grid points in z-direction
+    }
+    
+    int N  = Nx * Ny * Nz;              ///< Nx by Ny by Nz for simplicity
+    
     double hx = 1.0 / (Nx - 1.0);       ///< Grid spacing in x-direction
     double hy = 1.0 / (Ny - 1.0);       ///< Grid spacing in y-direction
     double hz = 1.0 / (Nz - 1.0);       ///< Grid spacing in z-direction
 
-    double a = 1.0 / (hx * hx);         ///< Finite-difference coefficient in x-direction
-    double b = 1.0 / (hy * hy);         ///< Finite-difference coefficient in y-direction
-    double c = 1.0 / (hz * hz);         ///< Finite-difference coefficient in z-direction
-
-    double* u     = new double[N]();    ///< Numerical solution
-    double* u_new = new double[N]();    ///< Temporary array to update solution
-    double* f     = new double[N]();    ///< Forcing function
+    double a  = 1.0 / (hx * hx);        ///< Finite-difference coefficient in x-direction
+    double b  = 1.0 / (hy * hy);        ///< Finite-difference coefficient in y-direction
+    double c  = 1.0 / (hz * hz);        ///< Finite-difference coefficient in z-direction
     
-    
-    /// Enforcing Dirichlet boundary conditions and initialising interior values for selected test case
+    double *u      = new double[N]();   ///< Numerical solution
+    double *u_new  = new double[N]();   ///< Temporary array to update solution
     if (has_test) {
+        f = new double[N]();
         initialise_test_case(test_case, u, u_new, f, Nx, Ny, Nz, hx, hy, hz);
-    }
-    
-    /// Assigns forcing file
-    if (has_forcing) {
-        forcing_file = vm["forcing"].as<std::string>();
     }
     
     double epsilon       = vm["epsilon"].as<double>();  ///< Tolerance
@@ -139,9 +142,6 @@ int main(int argc, char* argv[]) {
     double residual_nrm2 = 1.0;                         ///< Initialising residual value
     int iter             = 0;                           ///< Initialising iteration counter
     int max_iter         = 100000;                      ///< Setting maximum number of iterations
-    
-    std::cout << "Nx = " << Nx << ", Ny = " << Ny
-          << ", Nz = " << Nz << ", epsilon = " << epsilon << std::endl;
     
     /// Stop if residual is smaller than tolerance or if maximum number of iterations is reached
     while (residual_nrm2 > epsilon && iter < max_iter) {
@@ -153,6 +153,9 @@ int main(int argc, char* argv[]) {
     
     /// Printing final residual
     std::cout << "Final residual = " << residual_nrm2 << std::endl;
+    
+    /// Writing converged solution to file
+    write_solution("solution.txt", u, Nx, Ny, Nz);
 
     /// Free dynamic memory
     delete[] u;
