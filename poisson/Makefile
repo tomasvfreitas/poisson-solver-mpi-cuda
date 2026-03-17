@@ -5,10 +5,10 @@ LDLIBS       = -lblas
 BOOST_LIBS   = -lboost_program_options
 
 SERIAL_OBJ   = main-serial.o solver-serial.o test-case.o io.o
-MPI_OBJ      = main-mpi.o solver-mpi.o test-case.o io.o
+MPI_OBJ      = main-mpi.o solver-mpi.o test-case.o io.o halo-mpi.o
 TEST_SER_OBJ = test-serial.o solver-serial.o test-case.o
-TEST_MPI_OBJ = test-mpi.o solver-mpi.o test-case.o
-HEADERS      = solver.hpp test-case.hpp io.hpp
+TEST_MPI_OBJ = test-mpi.o solver-mpi.o test-case.o halo-mpi.o
+HEADERS      = solver.hpp test-case.hpp io.hpp halo-mpi.hpp
 
 default: all
 all: poisson

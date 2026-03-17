@@ -1,16 +1,23 @@
 /**
  * @mainpage Poisson Solver Documentation
  *
- * This project implements a serial Jacobi solver for the
- * three-dimensional Poisson equation.
+ * This project implements serial and parallel (MPI) Jacobi solvers
+ * for the three-dimensional Poisson equation.
  *
  * The solver uses a finite-difference discretisation and
  * iterates until the L2 norm of the residual falls below
  * a specified tolerance.
  *
- * See the file documentation for implementation details.
+ * The project consists of four build targets: a serial solver
+ * (\c poisson), a parallel MPI solver (\c poisson-mpi), and
+ * their respective test suites (\c test-serial, \c test-mpi).
+ * A representation of the file architecture can be seen below.
+ *
+ * <img src="Makefile-representation.png" alt="File architecture" width="600">
+ *
+ * For detailed documentation of each file and function, see the
+ * <a href="files.html">File List</a>.
  */
-
 
 /**
  * @file main-serial.cpp
@@ -63,7 +70,7 @@ int main(int argc, char* argv[]) {
     opts.add_options()
         ("help", "Print available options.")
         ("forcing", po::value<std::string>(), "Input forcing file")
-        ("test", po::value<int>()->default_value(1), "Test case to use (1-5)")
+        ("test", po::value<int>()->default_value(1)->implicit_value(1), "Test case to use (1-5)")
         ("Nx", po::value<int>()->default_value(32), "Number of grid points (x)")
         ("Ny", po::value<int>()->default_value(32), "Number of grid points (y)")
         ("Nz", po::value<int>()->default_value(32), "Number of grid points (z)")

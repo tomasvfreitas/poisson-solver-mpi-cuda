@@ -2,6 +2,12 @@
 #define SOLVER_HPP
 
 /**
+ * @file solver.hpp
+ * @brief Declarations for the Jacobi solver and residual computation.
+ */
+
+
+/**
  * @brief Perform one Jacobi sweep over the interior grid points.
  *
  * Updates the interior values of the solution using
