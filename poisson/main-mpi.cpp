@@ -29,12 +29,12 @@
 
 namespace po = boost::program_options;
 
-#define F77NAME(x) x##_
-extern "C" {
-    void F77NAME(dcopy)(const int& N,
-                        const double* x, const int& incx,
-                        double* y, const int& incy);
-}
+//#define F77NAME(x) x##_
+//extern "C" {
+//    void F77NAME(dcopy)(const int& N,
+//                        const double* x, const int& incx,
+//                        double* y, const int& incy);
+//}
 
 int main(int argc, char* argv[]) {
     
@@ -306,13 +306,14 @@ int main(int argc, char* argv[]) {
         jacobi(u, u_new, f, pNx, pNy, pNz, i_start,
                i_end, j_start, j_end, k_start, k_end,
                a, b, c, denom);
-
+        
         /// Copy u_new to u (interior only, preserving ghost values)
         for (int k = 1; k <= pNz - 2; ++k) {
             for (int j = 1; j <= pNy - 2; ++j) {
-                int idx_start = 1 + pNx * (j + pNy * k);
-                int count = pNx - 2;
-                F77NAME(dcopy)(count, &u_new[idx_start], 1, &u[idx_start], 1);
+                for (int i = 1; i <= pNx - 2; ++i) {
+                    int idx = i + pNx * (j + pNy * k);
+                    u[idx] = u_new[idx];
+                }
             }
         }
 

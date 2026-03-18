@@ -1,6 +1,6 @@
 CXX          = g++
 MPICXX       = mpicxx
-CXXFLAGS     = -std=c++11 -Wall -O2
+CXXFLAGS     = -std=c++11 -Wall -O3 -g
 LDLIBS       = -lblas
 BOOST_LIBS   = -lboost_program_options
 
