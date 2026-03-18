@@ -24,13 +24,6 @@
 #include "test-case.hpp"
 #include "halo-mpi.hpp"
 
-#define F77NAME(x) x##_
-extern "C" {
-    void F77NAME(dcopy)(const int& N,
-                        const double* x, const int& incx,
-                        double* y, const int& incy);
-}
-
 /**
  * @brief Return the exact analytical solution for a verification case.
  */
@@ -183,22 +176,10 @@ bool run_test(int test_case, double sol_tol, int rank, int size) {
     while (res_nrm > epsilon && iter < max_iter) {
         halo_exchange(u, loc_Nx, loc_Ny, loc_Nz,
                       nbr_xm, nbr_xp, nbr_ym, nbr_yp, nbr_zm, nbr_zp);
-        jacobi(u, u_new, f, pNx, pNy, pNz,
-               i_start, i_end, j_start, j_end, k_start, k_end,
-               a, b, c, denom);
 
-        /// Copy u_new to u (interior only, preserving ghost values)
-        for (int k = 1; k <= pNz - 2; ++k) {
-            for (int j = 1; j <= pNy - 2; ++j) {
-                int idx_start = 1 + pNx * (j + pNy * k);
-                int count = pNx - 2;
-                F77NAME(dcopy)(count, &u_new[idx_start], 1, &u[idx_start], 1);
-            }
-        }
-
-        res_nrm = residual(u, f, pNx, pNy, pNz,
-                           i_start, i_end, j_start, j_end, k_start, k_end,
-                           a, b, c);
+        res_nrm = jacobi_residual(u, u_new, f, pNx, pNy, pNz,
+                                  i_start, i_end, j_start, j_end, k_start, k_end,
+                                  a, b, c, denom);
         ++iter;
     }
 

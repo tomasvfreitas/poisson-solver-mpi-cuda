@@ -17,7 +17,7 @@ poisson: $(SERIAL_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS) $(BOOST_LIBS)
 
 poisson-mpi: $(MPI_OBJ)
-	$(MPICXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS) $(BOOST_LIBS)
+	$(MPICXX) $(CXXFLAGS) -o $@ $^ $(BOOST_LIBS)
 
 tests: test-serial test-mpi
 	./test-serial
@@ -27,7 +27,7 @@ test-serial: $(TEST_SER_OBJ)
 	$(CXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
 
 test-mpi: $(TEST_MPI_OBJ)
-	$(MPICXX) $(CXXFLAGS) -o $@ $^ $(LDLIBS)
+	$(MPICXX) $(CXXFLAGS) -o $@ $^
 
 %.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -c $< -o $@

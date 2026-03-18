@@ -9,8 +9,8 @@
  * of the Laplacian operator until the L2 norm of the residual \f$ \|r\|_2 \f$
  * falls below a specified tolerance.
  *
- * The implementation uses the BLAS routine 'dcopy' to update the
- * solution array after each Jacobi iteration.
+ * The Jacobi update, residual computation and solution copy-back are
+ * fused into a single pass over the grid to reduce memory traffic.
  *
  * @author Tomas Freitas
  * @date 2026
@@ -28,13 +28,6 @@
 #include "halo-mpi.hpp"
 
 namespace po = boost::program_options;
-
-//#define F77NAME(x) x##_
-//extern "C" {
-//    void F77NAME(dcopy)(const int& N,
-//                        const double* x, const int& incx,
-//                        double* y, const int& incy);
-//}
 
 int main(int argc, char* argv[]) {
     
@@ -142,7 +135,6 @@ int main(int argc, char* argv[]) {
     double c     = 1.0 / (hz * hz);           ///< Finite-difference coefficient in z-direction
     double denom = 1.0 / (2.0 * (a + b + c)); ///< Setting denom for simplicity
     
-    
     int rx = rank % Px;                       ///< Process x-coordinates
     int ry = (rank / Px) % Py;                ///< Process y-coordinates
     int rz = rank / (Px * Py);                ///< Process z-coordinates
@@ -170,7 +162,8 @@ int main(int argc, char* argv[]) {
             return -1;
         return cx + Px * (cy + Py * cz);
     };
-
+    
+    /// Identify neighbouring ranks in each direction (-1 if on domain boundary)
     int nbr_xm = rank_from_coords(rx - 1, ry, rz);
     int nbr_xp = rank_from_coords(rx + 1, ry, rz);
     int nbr_ym = rank_from_coords(rx, ry - 1, rz);
@@ -297,35 +290,19 @@ int main(int argc, char* argv[]) {
     int k_start = (nbr_zm < 0) ? 2 : 1;
     int k_end   = (nbr_zp < 0) ? pNz - 3 : pNz - 2;
     
+    /// Running solver until convergence
     while (residual_nrm2 > epsilon && iter < max_iter) {
         /// Exchange ghost layers with neighbours
         halo_exchange(u, loc_Nx, loc_Ny, loc_Nz,
                       nbr_xm, nbr_xp, nbr_ym, nbr_yp, nbr_zm, nbr_zp);
-
-        /// Jacobi sweep on padded local grid (interior points are [1..loc_Nx] etc.)
-        jacobi(u, u_new, f, pNx, pNy, pNz, i_start,
-               i_end, j_start, j_end, k_start, k_end,
-               a, b, c, denom);
         
-        /// Copy u_new to u (interior only, preserving ghost values)
-        for (int k = 1; k <= pNz - 2; ++k) {
-            for (int j = 1; j <= pNy - 2; ++j) {
-                for (int i = 1; i <= pNx - 2; ++i) {
-                    int idx = i + pNx * (j + pNy * k);
-                    u[idx] = u_new[idx];
-                }
-            }
-        }
-
-        /// Compute global residual
-        residual_nrm2 = residual(u, f, pNx, pNy, pNz, i_start,
-                                 i_end, j_start, j_end, k_start, k_end,
-                                 a, b, c);
-                                 
+        /// Jacobi + residual calc
+        residual_nrm2 = jacobi_residual(u, u_new, f, pNx, pNy, pNz, 
+                                        i_start, i_end, j_start, j_end,
+                                        k_start, k_end, a, b, c, denom);
+                                        
         ++iter;
     }
-
-    // Gather solution and write output
 
     /// Allocate global solution on rank 0
     double* u_global = nullptr;
@@ -403,9 +380,8 @@ int main(int argc, char* argv[]) {
         MPI_Send(send_buf, loc_N_noghost, MPI_DOUBLE, 0, 20, MPI_COMM_WORLD);
     }
 
-    delete[] send_buf;
-
     /// Free dynamic memory
+    delete[] send_buf;
     delete[] u;
     delete[] u_new;
     delete[] f;
