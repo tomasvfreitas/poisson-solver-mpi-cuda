@@ -22,14 +22,16 @@
  */
 void jacobi(double* u, double* u_new, const double* f,
             int Nx, int Ny, int Nz,
+            int i_start, int i_end, int j_start, int j_end,
+            int k_start, int k_end,
             double a, double b, double c, double denom) {
+
+    for (int k = k_start; k <= k_end; ++k) {
+        for (int j = j_start; j <= j_end; ++j) {
+            for (int i = i_start; i <= i_end; ++i) {
                 
-    for (int k = 1; k < Nz - 1; ++k) {
-        for (int j = 1; j < Ny - 1; ++j) {
-            for (int i = 1; i < Nx - 1; ++i) {
-
                 int idx = i + Nx * (j + Ny * k);
-
+                
                 u_new[idx] = denom * (
                     (u[idx + 1]       + u[idx - 1])       * a +
                     (u[idx + Nx]      + u[idx - Nx])      * b +
@@ -62,21 +64,21 @@ void jacobi(double* u, double* u_new, const double* f,
  */
 double residual(const double* u, const double* f,
                 int Nx, int Ny, int Nz,
+                int i_start, int i_end, int j_start, int j_end,
+                int k_start, int k_end,
                 double a, double b, double c) {
-                    
+
     double local_sum = 0.0;
-
-    for (int k = 1; k < Nz - 1; ++k) {
-        for (int j = 1; j < Ny - 1; ++j) {
-            for (int i = 1; i < Nx - 1; ++i) {
-
+    for (int k = k_start; k <= k_end; ++k) {
+        for (int j = j_start; j <= j_end; ++j) {
+            for (int i = i_start; i <= i_end; ++i) {
+                
                 int idx = i + Nx * (j + Ny * k);
-
+                
                 double lap =
                     (u[idx + 1]       - 2.0 * u[idx] + u[idx - 1])       * a +
                     (u[idx + Nx]      - 2.0 * u[idx] + u[idx - Nx])      * b +
                     (u[idx + Nx * Ny] - 2.0 * u[idx] + u[idx - Nx * Ny]) * c;
-
                 double r = f[idx] - lap;
                 local_sum += r * r;
             }

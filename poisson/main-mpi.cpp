@@ -42,7 +42,7 @@ int main(int argc, char* argv[]) {
     
     int rank = 0, size = 0;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);     ///< Obtaining rank
-    MPI_Comm_size(MPI_COMM_WORLD, &size);     ///< Obatining number of processes
+    MPI_Comm_size(MPI_COMM_WORLD, &size);     ///< Obtaining number of processes
 
     /// Command-line parsing
     po::options_description opts("Allowed options");
@@ -284,26 +284,43 @@ int main(int argc, char* argv[]) {
     }
 
     // Solver loop
-
     double epsilon       = vm["epsilon"].as<double>();
     double residual_nrm2 = 1.0;
     int    iter          = 0;
     int    max_iter      = 100000;
-
+    
+    /// Interior loop bounds: skip global boundary points
+    int i_start = (nbr_xm < 0) ? 2 : 1;
+    int i_end   = (nbr_xp < 0) ? pNx - 3 : pNx - 2;
+    int j_start = (nbr_ym < 0) ? 2 : 1;
+    int j_end   = (nbr_yp < 0) ? pNy - 3 : pNy - 2;
+    int k_start = (nbr_zm < 0) ? 2 : 1;
+    int k_end   = (nbr_zp < 0) ? pNz - 3 : pNz - 2;
+    
     while (residual_nrm2 > epsilon && iter < max_iter) {
         /// Exchange ghost layers with neighbours
         halo_exchange(u, loc_Nx, loc_Ny, loc_Nz,
                       nbr_xm, nbr_xp, nbr_ym, nbr_yp, nbr_zm, nbr_zp);
 
         /// Jacobi sweep on padded local grid (interior points are [1..loc_Nx] etc.)
-        jacobi(u, u_new, f, pNx, pNy, pNz, a, b, c, denom);
+        jacobi(u, u_new, f, pNx, pNy, pNz, i_start,
+               i_end, j_start, j_end, k_start, k_end,
+               a, b, c, denom);
 
-        /// Copy u_new to u
-        F77NAME(dcopy)(pN, u_new, 1, u, 1);
+        /// Copy u_new to u (interior only, preserving ghost values)
+        for (int k = 1; k <= pNz - 2; ++k) {
+            for (int j = 1; j <= pNy - 2; ++j) {
+                int idx_start = 1 + pNx * (j + pNy * k);
+                int count = pNx - 2;
+                F77NAME(dcopy)(count, &u_new[idx_start], 1, &u[idx_start], 1);
+            }
+        }
 
         /// Compute global residual
-        residual_nrm2 = residual(u, f, pNx, pNy, pNz, a, b, c);
-
+        residual_nrm2 = residual(u, f, pNx, pNy, pNz, i_start,
+                                 i_end, j_start, j_end, k_start, k_end,
+                                 a, b, c);
+                                 
         ++iter;
     }
 
@@ -387,12 +404,12 @@ int main(int argc, char* argv[]) {
 
     delete[] send_buf;
 
-    // ── Cleanup ───────────────────────────────────────────────────────
-
+    /// Free dynamic memory
     delete[] u;
     delete[] u_new;
     delete[] f;
 
     MPI_Finalize();
+    
     return 0;
 }

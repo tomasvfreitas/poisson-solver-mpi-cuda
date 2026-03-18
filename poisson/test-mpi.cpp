@@ -172,12 +172,33 @@ bool run_test(int test_case, double sol_tol, int rank, int size) {
     int    iter     = 0;
     int    max_iter = 100000;
 
+    /// Interior loop bounds: skip global boundary points
+    int i_start = (nbr_xm < 0) ? 2 : 1;
+    int i_end   = (nbr_xp < 0) ? pNx - 3 : pNx - 2;
+    int j_start = (nbr_ym < 0) ? 2 : 1;
+    int j_end   = (nbr_yp < 0) ? pNy - 3 : pNy - 2;
+    int k_start = (nbr_zm < 0) ? 2 : 1;
+    int k_end   = (nbr_zp < 0) ? pNz - 3 : pNz - 2;
+
     while (res_nrm > epsilon && iter < max_iter) {
         halo_exchange(u, loc_Nx, loc_Ny, loc_Nz,
                       nbr_xm, nbr_xp, nbr_ym, nbr_yp, nbr_zm, nbr_zp);
-        jacobi(u, u_new, f, pNx, pNy, pNz, a, b, c, denom);
-        F77NAME(dcopy)(pN, u_new, 1, u, 1);
-        res_nrm = residual(u, f, pNx, pNy, pNz, a, b, c);
+        jacobi(u, u_new, f, pNx, pNy, pNz,
+               i_start, i_end, j_start, j_end, k_start, k_end,
+               a, b, c, denom);
+
+        /// Copy u_new to u (interior only, preserving ghost values)
+        for (int k = 1; k <= pNz - 2; ++k) {
+            for (int j = 1; j <= pNy - 2; ++j) {
+                int idx_start = 1 + pNx * (j + pNy * k);
+                int count = pNx - 2;
+                F77NAME(dcopy)(count, &u_new[idx_start], 1, &u[idx_start], 1);
+            }
+        }
+
+        res_nrm = residual(u, f, pNx, pNy, pNz,
+                           i_start, i_end, j_start, j_end, k_start, k_end,
+                           a, b, c);
         ++iter;
     }
 
