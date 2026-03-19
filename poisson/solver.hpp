@@ -82,5 +82,40 @@ double jacobi_residual(double* u, double* u_new, const double* f,
                        int i_start, int i_end, int j_start, int j_end,
                        int k_start, int k_end,
                        double a, double b, double c, double denom);
+                       
+                       
+#ifdef CUDA_ENABLED
+/**
+ * @brief CUDA version of the fused Jacobi sweep, residual and copy-back.
+ *
+ * Offloads the computation to the GPU. Each grid point is processed
+ * by a separate CUDA thread. The local residual sum is combined
+ * across MPI ranks using MPI_Allreduce.
+ *
+ * @param d_u     Current solution array (unified managed memory).
+ * @param d_u_new Temporary array for the Jacobi update.
+ * @param d_f     Forcing function array (unified managed memory).
+ * @param Nx      Padded number of grid points in x-direction.
+ * @param Ny      Padded number of grid points in y-direction.
+ * @param Nz      Padded number of grid points in z-direction.
+ * @param i_start First interior index in x (inclusive).
+ * @param i_end   Last interior index in x (inclusive).
+ * @param j_start First interior index in y (inclusive).
+ * @param j_end   Last interior index in y (inclusive).
+ * @param k_start First interior index in z (inclusive).
+ * @param k_end   Last interior index in z (inclusive).
+ * @param a       Finite-difference coefficient in x-direction.
+ * @param b       Finite-difference coefficient in y-direction.
+ * @param c       Finite-difference coefficient in z-direction.
+ * @param denom   Precomputed denominator used in the Jacobi update.
+ * @return double Global L2 norm of the residual.
+ */
+double jacobi_residual_cuda(double* d_u, double* d_u_new, const double* d_f,
+                            int Nx, int Ny, int Nz,
+                            int i_start, int i_end,
+                            int j_start, int j_end,
+                            int k_start, int k_end,
+                            double a, double b, double c, double denom);
+#endif
 
 #endif
