@@ -1,6 +1,6 @@
 /**
- * @file main-mpi.cpp
- * @brief Parallel Jacobi solver for the 3D Poisson equation.
+* @file main-mpi.cpp
+ * @brief Parallel Jacobi solver for the 3D Poisson equation (MPI, optional CUDA).
  *
  * This program solves the Poisson equation \f$ \nabla^2 u = f \f$ on 
  * a three-dimensional grid using Jacobi iteration with Dirichlet boundary conditions.
@@ -11,6 +11,8 @@
  *
  * The Jacobi update, residual computation and solution copy-back are
  * fused into a single pass over the grid to reduce memory traffic.
+ * When compiled with -DCUDA_ENABLED, the fused kernel is offloaded
+ * to the GPU using CUDA with unified managed memory.
  *
  * @author Tomas Freitas
  * @date 2026
@@ -24,6 +26,7 @@
 
 #ifdef CUDA_ENABLED
 #include <cuda_runtime.h>
+#include <cstring>
 #endif
 
 #include "solver.hpp"
