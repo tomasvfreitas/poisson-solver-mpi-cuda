@@ -22,6 +22,10 @@
 #include <boost/program_options.hpp>
 #include <mpi.h>
 
+#ifdef CUDA_ENABLED
+#include <cuda_runtime.h>
+#endif
+
 #include "solver.hpp"
 #include "test-case.hpp"
 #include "io.hpp"
@@ -171,10 +175,26 @@ int main(int argc, char* argv[]) {
     int nbr_zm = rank_from_coords(rx, ry, rz - 1);
     int nbr_zp = rank_from_coords(rx, ry, rz + 1);
 
-    /// Allocate local arrays (with ghost layers)
-    double* u     = new double[pN]();
-    double* u_new = new double[pN]();
-    double* f     = new double[pN]();
+    /// Allocate local arrays (with ghost layers) to GPU 
+    #ifdef CUDA_ENABLED 
+    double *u; 
+    double *u_new; 
+    double *f;
+    cudaMallocManaged(&u,     pN*sizeof(double));
+    cudaMallocManaged(&u_new, pN*sizeof(double));
+    cudaMallocManaged(&f,     pN*sizeof(double));
+    memset(u, 0, pN * sizeof(double));
+    memset(u_new, 0, pN * sizeof(double));
+    memset(f, 0, pN * sizeof(double));
+    
+    /// Allocate local arrays (with ghost layers) to CPU 
+    #else
+    double *u     = new double[pN]();
+    double *u_new = new double[pN]();
+    double *f     = new double[pN]();
+    
+    #endif
+
 
     /// Initialise local subdomain
     if (has_test) {
@@ -280,7 +300,7 @@ int main(int argc, char* argv[]) {
     double epsilon       = vm["epsilon"].as<double>();
     double residual_nrm2 = 1.0;
     int    iter          = 0;
-    int    max_iter      = 100000;
+    int    max_iter      = 500000;
     
     /// Interior loop bounds: skip global boundary points
     int i_start = (nbr_xm < 0) ? 2 : 1;
@@ -290,20 +310,34 @@ int main(int argc, char* argv[]) {
     int k_start = (nbr_zm < 0) ? 2 : 1;
     int k_end   = (nbr_zp < 0) ? pNz - 3 : pNz - 2;
     
-    /// Running solver until convergence
-    while (residual_nrm2 > epsilon && iter < max_iter) {
+    double t_start = MPI_Wtime();                        /// Start timing
+    while (residual_nrm2 > epsilon && iter < max_iter) { /// Running solver until convergenc
+        
         /// Exchange ghost layers with neighbours
         halo_exchange(u, loc_Nx, loc_Ny, loc_Nz,
                       nbr_xm, nbr_xp, nbr_ym, nbr_yp, nbr_zm, nbr_zp);
         
+        #ifdef CUDA_ENABLED
+        /// Jacobi + residual calc using CUDA
+        residual_nrm2 = jacobi_residual_cuda(u, u_new, f, pNx, pNy, pNz, 
+                                             i_start, i_end, j_start, j_end,
+                                             k_start, k_end, a, b, c, denom);
+        #else
         /// Jacobi + residual calc
         residual_nrm2 = jacobi_residual(u, u_new, f, pNx, pNy, pNz, 
                                         i_start, i_end, j_start, j_end,
                                         k_start, k_end, a, b, c, denom);
-                                        
+        #endif
         ++iter;
     }
-
+    
+    /// Root prints time and iterations
+    double t_end = MPI_Wtime();
+    if (rank == 0) {                                    
+        std::cout << "Wall time = " << t_end - t_start << " s" << std::endl;
+        std::cout << "Iterations = " << iter << std::endl;
+    }
+    
     /// Allocate global solution on rank 0
     double* u_global = nullptr;
     if (rank == 0) {
@@ -379,12 +413,18 @@ int main(int argc, char* argv[]) {
     } else {
         MPI_Send(send_buf, loc_N_noghost, MPI_DOUBLE, 0, 20, MPI_COMM_WORLD);
     }
-
-    /// Free dynamic memory
     delete[] send_buf;
+    
+    /// Free dynamic memory
+    #ifdef CUDA_ENABLED
+    cudaFree(u);
+    cudaFree(u_new);
+    cudaFree(f);
+    #else
     delete[] u;
     delete[] u_new;
     delete[] f;
+    #endif
 
     MPI_Finalize();
     
