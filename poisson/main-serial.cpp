@@ -2,18 +2,17 @@
  * @mainpage Poisson Solver Documentation
  *
  * This project implements serial and parallel (MPI) Jacobi solvers
- * for the three-dimensional Poisson equation.
+ * for the three-dimensional Poisson equation, with optional GPU
+ * acceleration using CUDA.
  *
  * The solver uses a finite-difference discretisation and
  * iterates until the L2 norm of the residual falls below
  * a specified tolerance.
  *
- * The project consists of four build targets: a serial solver
- * (\c poisson), a parallel MPI solver (\c poisson-mpi), and
- * their respective test suites (\c test-serial, \c test-mpi).
- * A representation of the file architecture can be seen below.
- *
- * <img src="Makefile-representation.png" alt="File architecture" width="600">
+ * The project consists of five build targets: a serial solver
+ * (\c poisson), a parallel MPI solver (\c poisson-mpi), their
+ * respective test suites (\c test-serial, \c test-mpi) and a
+ * CUDA-accelerated version (\c poisson-cuda).
  *
  * For detailed documentation of each file and function, see the
  * <a href="files.html">File List</a>.
@@ -148,7 +147,7 @@ int main(int argc, char* argv[]) {
     double denom         = 1.0 / (2.0 * (a + b + c));   ///< Setting denom for simplicity
     double residual_nrm2 = 1.0;                         ///< Initialising residual value
     int iter             = 0;                           ///< Initialising iteration counter
-    int max_iter         = 100000;                      ///< Setting maximum number of iterations
+    int max_iter         = 500000;                      ///< Setting maximum number of iterations
     
     /// Stop if residual is smaller than tolerance or if maximum number of iterations is reached
     while (residual_nrm2 > epsilon && iter < max_iter) {

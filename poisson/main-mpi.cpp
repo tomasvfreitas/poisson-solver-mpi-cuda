@@ -1,5 +1,5 @@
 /**
-* @file main-mpi.cpp
+ * @file main-mpi.cpp
  * @brief Parallel Jacobi solver for the 3D Poisson equation (MPI, optional CUDA).
  *
  * This program solves the Poisson equation \f$ \nabla^2 u = f \f$ on 
@@ -313,8 +313,8 @@ int main(int argc, char* argv[]) {
     int k_start = (nbr_zm < 0) ? 2 : 1;
     int k_end   = (nbr_zp < 0) ? pNz - 3 : pNz - 2;
     
-    double t_start = MPI_Wtime();                        /// Start timing
-    while (residual_nrm2 > epsilon && iter < max_iter) { /// Running solver until convergenc
+    /// Running solver until convergence
+    while (residual_nrm2 > epsilon && iter < max_iter) { 
         
         /// Exchange ghost layers with neighbours
         halo_exchange(u, loc_Nx, loc_Ny, loc_Nz,
@@ -332,13 +332,6 @@ int main(int argc, char* argv[]) {
                                         k_start, k_end, a, b, c, denom);
         #endif
         ++iter;
-    }
-    
-    /// Root prints time and iterations
-    double t_end = MPI_Wtime();
-    if (rank == 0) {                                    
-        std::cout << "Wall time = " << t_end - t_start << " s" << std::endl;
-        std::cout << "Iterations = " << iter << std::endl;
     }
     
     /// Allocate global solution on rank 0
