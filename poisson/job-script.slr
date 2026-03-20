@@ -1,0 +1,63 @@
+#!/bin/bash
+#SBATCH --nodes=1
+#SBATCH --ntasks=48
+#SBATCH --exclusive
+#SBATCH --time=02:00:00
+#SBATCH --job-name=scaling
+#SBATCH --partition=short
+
+echo "=== Strong Scaling: Test 4, 64^3 ==="
+
+echo "= -np 1 --Px 1 --Py 1 --Pz 1 ="
+mpiexec -np 1 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 1 --Py 1 --Pz 1
+
+echo "= -np 2 --Px 2 --Py 1 --Pz 1 ="
+mpiexec -np 2 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 2 --Py 1 --Pz 1
+
+echo "= -np 4 --Px 2 --Py 2 --Pz 1 ="
+mpiexec -np 4 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 2 --Py 2 --Pz 1
+
+echo "= -np 8 --Px 2 --Py 2 --Pz 2 ="
+mpiexec -np 8 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 2 --Py 2 --Pz 2
+
+echo "= -np 16 --Px 4 --Py 2 --Pz 2 ="
+mpiexec -np 16 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 4 --Py 2 --Pz 2
+
+echo "= -np 24 --Px 4 --Py 3 --Pz 2 ="
+mpiexec -np 24 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 4 --Py 3 --Pz 2
+
+echo "= -np 32 --Px 4 --Py 4 --Pz 2 ="
+mpiexec -np 32 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 4 --Py 4 --Pz 2
+
+echo "= -np 48 --Px 4 --Py 4 --Pz 3 ="
+mpiexec -np 48 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 4 --Py 4 --Pz 3
+
+
+
+echo "=== Weak Scaling: ~32^3 per core ==="
+
+echo "= -np 1, 32^3, --Px 1 --Py 1 --Pz 1 ="
+mpiexec -np 1 ./poisson-mpi --test 4 --Nx 32 --Ny 32 --Nz 32 --Px 1 --Py 1 --Pz 1
+
+echo "= -np 2, 64x32x32, --Px 2 --Py 1 --Pz 1 ="
+mpiexec -np 2 ./poisson-mpi --test 4 --Nx 64 --Ny 32 --Nz 32 --Px 2 --Py 1 --Pz 1
+
+echo "= -np 4, 64x64x32, --Px 2 --Py 2 --Pz 1 ="
+mpiexec -np 4 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 32 --Px 2 --Py 2 --Pz 1
+
+echo "= -np 8, 64^3, --Px 2 --Py 2 --Pz 2 ="
+mpiexec -np 8 ./poisson-mpi --test 4 --Nx 64 --Ny 64 --Nz 64 --Px 2 --Py 2 --Pz 2
+
+echo "= -np 16, 128x64x64, --Px 4 --Py 2 --Pz 2 ="
+mpiexec -np 16 ./poisson-mpi --test 4 --Nx 128 --Ny 64 --Nz 64 --Px 4 --Py 2 --Pz 2
+
+echo "= -np 27, 96^3, --Px 3 --Py 3 --Pz 3 ="
+mpiexec -np 27 ./poisson-mpi --test 4 --Nx 96 --Ny 96 --Nz 96 --Px 3 --Py 3 --Pz 3
+
+echo "= -np 32, 128x128x64, --Px 4 --Py 4 --Pz 2 ="
+mpiexec -np 32 ./poisson-mpi --test 4 --Nx 128 --Ny 128 --Nz 64 --Px 4 --Py 4 --Pz 2
+
+echo "= -np 48, 128x128x96, --Px 4 --Py 4 --Pz 3 ="
+mpiexec -np 48 ./poisson-mpi --test 4 --Nx 128 --Ny 128 --Nz 96 --Px 4 --Py 4 --Pz 3
+
+echo "=== Done ==="
