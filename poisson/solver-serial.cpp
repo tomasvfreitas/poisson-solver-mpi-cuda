@@ -1,5 +1,11 @@
+/**
+ * @file solver-serial.cpp
+ * @brief Serial implementation of the Jacobi solver and residual computation.
+ */
+ 
 #include <cmath>
 #include "solver.hpp"
+
 
 /**
  * @brief Perform one Jacobi sweep over the interior grid points.
